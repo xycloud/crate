@@ -89,7 +89,7 @@ Archiving Docs Versions
 
 Check the `versions hosted on ReadTheDocs`_.
 
-We should only be hosting the docs for:
+We only host the docs for:
 
 - `latest`
 - `stable`
@@ -97,7 +97,7 @@ We should only be hosting the docs for:
 - The current testing version number
 - The recent patch versions of the last two feature releases preceding the
   stable version
-- The most version of each major release
+- The most recent version of each major release
 
 Sometimes you might find that there are multiple older releases that need to be
 archived.
