@@ -398,8 +398,8 @@ public class ContextPreparer extends AbstractComponent {
         /**
          * from toKey(phaseId, inputId) to BatchConsumer.
          */
-        private final LongObjectMap<BatchConsumer> consumersByPhaseInputId = new LongObjectHashMap<>();
-        private final IntObjectMap<BatchConsumer> handlerConsumersByPhaseId = new IntObjectHashMap<>();
+        private final LongObjectMap<BatchConsumer<Row>> consumersByPhaseInputId = new LongObjectHashMap<>();
+        private final IntObjectMap<BatchConsumer<Row>> handlerConsumersByPhaseId = new IntObjectHashMap<>();
 
         private final SharedShardContexts sharedShardContexts;
 
@@ -429,14 +429,14 @@ public class ContextPreparer extends AbstractComponent {
         /**
          * Retrieve the rowReceiver of the downstream of phase
          */
-        BatchConsumer getBatchConsumer(UpstreamPhase phase, int pageSize) {
+        BatchConsumer<Row> getBatchConsumer(UpstreamPhase phase, int pageSize) {
             NodeOperation nodeOperation = opCtx.nodeOperationByPhaseId.get(phase.phaseId());
             if (nodeOperation == null) {
                 return handlerPhaseConsumer(phase.phaseId());
             }
 
             long phaseIdKey = toKey(nodeOperation.downstreamExecutionPhaseId(), nodeOperation.downstreamExecutionPhaseInputId());
-            BatchConsumer batchConsumer = consumersByPhaseInputId.get(phaseIdKey);
+            BatchConsumer<Row> batchConsumer = consumersByPhaseInputId.get(phaseIdKey);
             if (batchConsumer != null) {
                 // targetBatchConsumer is available because of same node optimization or direct result;
                 return batchConsumer;
@@ -446,7 +446,7 @@ public class ContextPreparer extends AbstractComponent {
             switch (distributionType) {
                 case BROADCAST:
                 case MODULO:
-                    BatchConsumer consumer = distributingDownstreamFactory.create(
+                    BatchConsumer<Row> consumer = distributingDownstreamFactory.create(
                         nodeOperation, phase.distributionInfo(), jobId(), pageSize);
                     traceGetBatchConsumer(phase, distributionType.toString(), nodeOperation, consumer);
                     return consumer;
@@ -476,8 +476,8 @@ public class ContextPreparer extends AbstractComponent {
          * <p>
          * Retrieve it
          */
-        private BatchConsumer handlerPhaseConsumer(int phaseId) {
-            BatchConsumer consumer = handlerConsumersByPhaseId.get(phaseId);
+        private BatchConsumer<Row> handlerPhaseConsumer(int phaseId) {
+            BatchConsumer<Row> consumer = handlerConsumersByPhaseId.get(phaseId);
             if (logger.isTraceEnabled()) {
                 logger.trace("Using BatchConsumer {} for phase {}, this is a leaf/handlerPhase", consumer, phaseId);
             }
@@ -580,7 +580,7 @@ public class ContextPreparer extends AbstractComponent {
         @Override
         public Boolean visitCollectPhase(CollectPhase phase, PreparerContext context) {
             RamAccountingContext ramAccountingContext = RamAccountingContext.forExecutionPhase(circuitBreaker, phase);
-            BatchConsumer consumer = context.getBatchConsumer(phase, Paging.PAGE_SIZE);
+            BatchConsumer<Row> consumer = context.getBatchConsumer(phase, Paging.PAGE_SIZE);
             context.registerSubContext(new JobCollectContext(
                 phase,
                 collectOperation,
@@ -622,13 +622,15 @@ public class ContextPreparer extends AbstractComponent {
         @Override
         public Boolean visitNestedLoopPhase(NestedLoopPhase phase, PreparerContext context) {
             RamAccountingContext ramAccountingContext = RamAccountingContext.forExecutionPhase(circuitBreaker, phase);
-            BatchConsumer lastConsumer = context.getBatchConsumer(phase, Paging.PAGE_SIZE);
+            BatchConsumer<Row> lastConsumer = context.getBatchConsumer(phase, Paging.PAGE_SIZE);
 
-            BatchConsumer firstConsumer = ProjectingBatchConsumer.create(
+            BatchConsumer<Row> firstConsumer = ProjectingBatchConsumer.create(
                 lastConsumer, phase.projections(), phase.jobId(), ramAccountingContext, projectorFactory);
             Predicate<Row> joinCondition = RowFilter.create(inputFactory, phase.joinCondition());
 
             NestedLoopOperation nestedLoopOperation = new NestedLoopOperation(
+                phase.numLeftOutputs(),
+                phase.numRightOutputs(),
                 firstConsumer,
                 joinCondition,
                 phase.joinType()

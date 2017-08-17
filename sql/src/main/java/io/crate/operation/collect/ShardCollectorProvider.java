@@ -126,7 +126,7 @@ public abstract class ShardCollectorProvider {
 
         final CrateCollector.Builder builder;
         if (normalizedCollectNode.whereClause().noMatch()) {
-            builder = RowsCollector.emptyBuilder(collectPhase.toCollect().size());
+            builder = RowsCollector.emptyBuilder();
         } else {
             assert normalizedCollectNode.maxRowGranularity() == RowGranularity.DOC : "granularity must be DOC";
             builder = getBuilder(normalizedCollectNode, requiresScroll, jobCollectContext);
@@ -143,7 +143,7 @@ public abstract class ShardCollectorProvider {
                 }
 
                 @Override
-                public BatchConsumer applyProjections(BatchConsumer consumer) {
+                public BatchConsumer<Row> applyProjections(BatchConsumer<Row> consumer) {
                     return ProjectingBatchConsumer.create(
                         consumer,
                         shardProjections,

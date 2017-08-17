@@ -22,40 +22,21 @@
 
 package io.crate.data;
 
-public class CompositeColumns implements Columns {
+import io.crate.testing.FailingBatchIterator;
+import org.junit.Test;
 
-    private final int numColumns;
-    private final BatchIterator[] iterators;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
-    private ProxyInput[] inputs;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
 
-    public CompositeColumns(BatchIterator[] iterators) {
-        this.iterators = iterators;
-        numColumns = iterators[0].rowData().size();
-        inputs = new ProxyInput[numColumns];
-        for (int i = 0; i < inputs.length; i++) {
-            inputs[i] = new ProxyInput();
-        }
-        updateInputs(0);
-    }
+public class BatchIteratorsTest {
 
-    void updateInputs(int idx) {
-        if (idx >= iterators.length) {
-            return;
-        }
-        Columns columns = iterators[idx].rowData();
-        for (int i = 0; i < numColumns; i++) {
-            inputs[i].input = columns.get(i);
-        }
-    }
-
-    @Override
-    public Input<?> get(int index) {
-        return inputs[index];
-    }
-
-    @Override
-    public int size() {
-        return numColumns;
+    @Test
+    public void testExceptionOnAllLoadedIsSetOntoFuture() throws Exception {
+        CompletableFuture<Long> future = BatchIterators.collect(
+            FailingBatchIterator.failOnAllLoaded(), Collectors.counting());
+        assertThat(future.isCompletedExceptionally(), is(true));
     }
 }

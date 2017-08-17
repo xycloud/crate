@@ -24,7 +24,7 @@ package io.crate.operation.projectors;
 
 import com.google.common.collect.ImmutableSet;
 import io.crate.data.BatchIterator;
-import io.crate.data.RowsBatchIterator;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.exceptions.UnhandledServerException;
 import io.crate.metadata.ColumnIdent;
 import io.crate.planner.projection.WriterProjection;
@@ -58,10 +58,10 @@ public class FileWriterProjectorTest extends CrateUnitTest {
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
-    private Supplier<BatchIterator> sourceSupplier = () -> RowsBatchIterator.newInstance(RowGenerator.fromSingleColValues(
+    private Supplier<BatchIterator> sourceSupplier = () -> InMemoryBatchIterator.newInstance(RowGenerator.fromSingleColValues(
         IntStream.range(0, 5)
             .mapToObj(i -> new BytesRef(String.format(Locale.ENGLISH, "input line %02d", i)))
-            .collect(Collectors.toList())), 1);
+            .collect(Collectors.toList())));
 
     @Test
     public void testToNestedStringObjectMap() throws Exception {

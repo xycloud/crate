@@ -53,11 +53,11 @@ public class SingleRowSource implements CollectSource {
     }
 
     @Override
-    public CrateCollector getCollector(CollectPhase phase, BatchConsumer consumer, JobCollectContext jobCollectContext) {
+    public CrateCollector getCollector(CollectPhase phase, BatchConsumer<Row> consumer, JobCollectContext jobCollectContext) {
         RoutedCollectPhase collectPhase = (RoutedCollectPhase) phase;
         collectPhase = collectPhase.normalize(clusterNormalizer, null);
         if (collectPhase.whereClause().noMatch()) {
-            return RowsCollector.empty(consumer, phase.toCollect().size());
+            return RowsCollector.empty(consumer);
         }
         assert !collectPhase.whereClause().hasQuery()
             : "WhereClause should have been normalized to either MATCH_ALL or NO_MATCH";

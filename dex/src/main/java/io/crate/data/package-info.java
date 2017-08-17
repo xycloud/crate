@@ -31,7 +31,7 @@
  * BatchIterators come in different forms:
  *
  *  - "Source" BatchIterators: These expose data from either in-memory, disk or network
- *    (Examples are LuceneBatchIterator, {@link io.crate.data.RowsBatchIterator} (Iterable backed))
+ *    (Examples are LuceneBatchIterator, {@link io.crate.data.InMemoryBatchIterator} (Iterable backed))
  *
  *  - "Projecting" BatchIterators: These wrap another BatchIterator and transform their data.
  *    There are multiple sub-types:

@@ -24,6 +24,7 @@ package io.crate.executor.transport.executionphases;
 
 import io.crate.data.BatchConsumer;
 import io.crate.data.BatchIterator;
+import io.crate.data.Row;
 import io.crate.exceptions.SQLExceptions;
 import io.crate.executor.transport.kill.KillJobsRequest;
 import io.crate.executor.transport.kill.KillResponse;
@@ -38,7 +39,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-class InterceptingBatchConsumer implements BatchConsumer {
+class InterceptingBatchConsumer implements BatchConsumer<Row> {
 
     private final static Logger LOGGER = Loggers.getLogger(InterceptingBatchConsumer.class);
 

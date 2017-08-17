@@ -25,17 +25,16 @@ package io.crate.action.sql;
 import io.crate.data.BatchConsumer;
 import io.crate.data.BatchIterator;
 import io.crate.data.Row;
-import io.crate.data.RowBridging;
 import io.crate.exceptions.SQLExceptions;
 
 import javax.annotation.Nullable;
 
-public class BatchConsumerToResultReceiver implements BatchConsumer {
+public class BatchConsumerToResultReceiver implements BatchConsumer<Row> {
 
     private ResultReceiver resultReceiver;
     private int maxRows;
     private long rowCount = 0;
-    private BatchIterator activeIt;
+    private BatchIterator<Row> activeIt;
 
     public BatchConsumerToResultReceiver(ResultReceiver resultReceiver, int maxRows) {
         this.resultReceiver = resultReceiver;
@@ -43,7 +42,7 @@ public class BatchConsumerToResultReceiver implements BatchConsumer {
     }
 
     @Override
-    public void accept(BatchIterator iterator, @Nullable Throwable failure) {
+    public void accept(BatchIterator<Row> iterator, @Nullable Throwable failure) {
         if (failure == null) {
             consumeIt(iterator);
         } else {
@@ -54,13 +53,12 @@ public class BatchConsumerToResultReceiver implements BatchConsumer {
         }
     }
 
-    private void consumeIt(BatchIterator iterator) {
-        Row row = RowBridging.toRow(iterator.rowData());
+    private void consumeIt(BatchIterator<Row> iterator) {
         boolean allLoaded;
         try {
             while (iterator.moveNext()) {
                 rowCount++;
-                resultReceiver.setNextRow(row);
+                resultReceiver.setNextRow(iterator.currentElement());
 
                 if (maxRows > 0 && rowCount % maxRows == 0) {
                     activeIt = iterator;
@@ -111,7 +109,7 @@ public class BatchConsumerToResultReceiver implements BatchConsumer {
 
     public void resume() {
         assert activeIt != null : "resume must only be called if suspended() returned true and activeIt is not null";
-        BatchIterator iterator = this.activeIt;
+        BatchIterator<Row> iterator = this.activeIt;
         this.activeIt = null;
         consumeIt(iterator);
     }

@@ -24,9 +24,9 @@ package io.crate.operation.projectors;
 import io.crate.analyze.symbol.InputColumn;
 import io.crate.analyze.symbol.Symbol;
 import io.crate.data.BatchIterator;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
 import io.crate.data.RowN;
-import io.crate.data.RowsBatchIterator;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Reference;
 import io.crate.metadata.ReferenceIdent;
@@ -95,7 +95,7 @@ public class IndexWriterProjectorUnitTest extends CrateUnitTest {
             UUID.randomUUID());
 
         RowN rowN = new RowN(new Object[]{new BytesRef("{\"y\": \"x\"}"), null});
-        BatchIterator batchIterator = RowsBatchIterator.newInstance(Collections.singletonList(rowN), rowN.numColumns());
+        BatchIterator<Row> batchIterator = InMemoryBatchIterator.newInstance(Collections.singletonList(rowN));
         batchIterator = indexWriter.apply(batchIterator);
 
         TestingBatchConsumer testingBatchConsumer = new TestingBatchConsumer();

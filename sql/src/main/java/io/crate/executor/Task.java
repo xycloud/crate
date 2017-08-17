@@ -34,7 +34,7 @@ public interface Task {
      * <p>
      * The consumer will receive a BatchIterator containing the result.
      */
-    void execute(BatchConsumer consumer, Row parameters);
+    void execute(BatchConsumer<Row> consumer, Row parameters);
 
     /**
      * execute the task if it represents a bulk operation.

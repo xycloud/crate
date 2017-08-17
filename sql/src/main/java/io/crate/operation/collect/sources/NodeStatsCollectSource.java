@@ -29,8 +29,13 @@ import io.crate.analyze.WhereClause;
 import io.crate.analyze.symbol.Symbol;
 import io.crate.data.BatchConsumer;
 import io.crate.data.BatchIterator;
+import io.crate.data.Row;
 import io.crate.executor.transport.TransportNodeStatsAction;
-import io.crate.metadata.*;
+import io.crate.metadata.Functions;
+import io.crate.metadata.LocalSysColReferenceResolver;
+import io.crate.metadata.ReplaceMode;
+import io.crate.metadata.RowCollectExpression;
+import io.crate.metadata.RowGranularity;
 import io.crate.metadata.sys.SysNodesTableInfo;
 import io.crate.operation.InputFactory;
 import io.crate.operation.collect.BatchIteratorCollectorBridge;
@@ -70,16 +75,16 @@ public class NodeStatsCollectSource implements CollectSource {
     }
 
     @Override
-    public CrateCollector getCollector(CollectPhase phase, BatchConsumer consumer, JobCollectContext jobCollectContext) {
+    public CrateCollector getCollector(CollectPhase phase, BatchConsumer<Row> consumer, JobCollectContext jobCollectContext) {
         RoutedCollectPhase collectPhase = (RoutedCollectPhase) phase;
         if (collectPhase.whereClause().noMatch()) {
-            return RowsCollector.empty(consumer, phase.toCollect().size());
+            return RowsCollector.empty(consumer);
         }
         Collection<DiscoveryNode> nodes = nodeIds(collectPhase.whereClause(),
             Lists.newArrayList(clusterService.state().getNodes().iterator()),
             functions);
         if (nodes.isEmpty()) {
-            return RowsCollector.empty(consumer, phase.toCollect().size());
+            return RowsCollector.empty(consumer);
         }
         BatchIterator nodeStatsIterator = NodeStatsIterator.newInstance(
             nodeStatsAction,

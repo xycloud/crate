@@ -24,7 +24,7 @@ package io.crate.testing;
 
 import io.crate.data.BatchIterator;
 import io.crate.data.ForwardingBatchIterator;
-import io.crate.data.RowsBatchIterator;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.exceptions.Exceptions;
 
 public class FailingBatchIterator extends ForwardingBatchIterator {
@@ -34,7 +34,7 @@ public class FailingBatchIterator extends ForwardingBatchIterator {
     private int moveNextCalls = 0;
 
     public static BatchIterator failOnAllLoaded() {
-        BatchIterator delegate = RowsBatchIterator.empty(1);
+        BatchIterator delegate = InMemoryBatchIterator.empty();
         return new ForwardingBatchIterator() {
             @Override
             protected BatchIterator delegate() {

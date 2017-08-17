@@ -25,9 +25,9 @@ import io.crate.Constants;
 import io.crate.analyze.where.DocKeys;
 import io.crate.concurrent.CompletableFutures;
 import io.crate.data.BatchConsumer;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
 import io.crate.data.Row1;
-import io.crate.data.RowsBatchIterator;
 import io.crate.exceptions.SQLExceptions;
 import io.crate.executor.JobTask;
 import io.crate.planner.node.dml.ESDelete;
@@ -102,7 +102,7 @@ public class ESDeleteTask extends JobTask {
         }
         result.whenComplete((Long futureResult, Throwable t) -> {
             if (t == null) {
-                consumer.accept(RowsBatchIterator.newInstance(new Row1(futureResult)), null);
+                consumer.accept(InMemoryBatchIterator.newInstance(new Row1(futureResult)), null);
             } else {
                 consumer.accept(null, t);
             }

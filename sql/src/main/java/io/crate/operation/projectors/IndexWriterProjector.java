@@ -23,7 +23,11 @@ package io.crate.operation.projectors;
 
 import com.google.common.base.MoreObjects;
 import io.crate.analyze.symbol.Symbol;
-import io.crate.data.*;
+import io.crate.data.BatchIterator;
+import io.crate.data.CollectingBatchIterator;
+import io.crate.data.Input;
+import io.crate.data.Projector;
+import io.crate.data.Row;
 import io.crate.executor.transport.ShardUpsertRequest;
 import io.crate.metadata.ColumnIdent;
 import io.crate.metadata.Functions;
@@ -119,8 +123,8 @@ public class IndexWriterProjector implements Projector {
 
 
     @Override
-    public BatchIterator apply(BatchIterator batchIterator) {
-        return CollectingBatchIterator.newInstance(batchIterator, shardingUpsertExecutor, 1);
+    public BatchIterator<Row> apply(BatchIterator<Row> batchIterator) {
+        return CollectingBatchIterator.<Row>newInstance(batchIterator, shardingUpsertExecutor);
     }
 
     @Override

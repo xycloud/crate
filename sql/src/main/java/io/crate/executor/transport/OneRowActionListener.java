@@ -23,8 +23,8 @@
 package io.crate.executor.transport;
 
 import io.crate.data.BatchConsumer;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
-import io.crate.data.RowsBatchIterator;
 import org.elasticsearch.action.ActionListener;
 
 import javax.annotation.Nonnull;
@@ -43,7 +43,7 @@ public class OneRowActionListener<Response> implements ActionListener<Response>,
 
     @Override
     public void onResponse(Response response) {
-        consumer.accept(RowsBatchIterator.newInstance(toRowFunction.apply(response)), null);
+        consumer.accept(InMemoryBatchIterator.newInstance(toRowFunction.apply(response)), null);
     }
 
     @Override

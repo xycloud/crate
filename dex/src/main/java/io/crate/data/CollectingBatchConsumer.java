@@ -26,7 +26,7 @@ import javax.annotation.Nullable;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collector;
 
-public class CollectingBatchConsumer<S, R> implements BatchConsumer {
+public class CollectingBatchConsumer<S, R> implements BatchConsumer<Row> {
 
     private final Collector<Row, S, R> collector;
     private final CompletableFuture<R> resultFuture = new CompletableFuture<>();
@@ -40,10 +40,10 @@ public class CollectingBatchConsumer<S, R> implements BatchConsumer {
     }
 
     @Override
-    public void accept(BatchIterator iterator, @Nullable Throwable failure) {
+    public void accept(BatchIterator<Row> iterator, @Nullable Throwable failure) {
         if (failure == null) {
-            BatchRowVisitor
-                .visitRows(iterator, collector.supplier().get(), collector, resultFuture)
+            BatchIterators
+                .collect(iterator, collector.supplier().get(), collector, resultFuture)
                 .whenComplete((r, f) -> iterator.close());
         } else {
             if (iterator != null) {

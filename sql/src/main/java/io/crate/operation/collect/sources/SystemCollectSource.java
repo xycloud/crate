@@ -26,8 +26,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import io.crate.analyze.EvaluatingNormalizer;
 import io.crate.data.BatchConsumer;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
-import io.crate.data.RowsBatchIterator;
 import io.crate.exceptions.SchemaUnknownException;
 import io.crate.exceptions.TableUnknownException;
 import io.crate.metadata.Functions;
@@ -136,11 +136,10 @@ public class SystemCollectSource implements CollectSource {
 
         return BatchIteratorCollectorBridge.newInstance(
             () -> tableDefinition.getIterable(routedCollectPhase.user()).get().thenApply(dataIterable ->
-                RowsBatchIterator.newInstance(
+                InMemoryBatchIterator.newInstance(
                     dataIterableToRowsIterable(routedCollectPhase,
                         tableDefinition.getReferenceResolver(),
-                        requiresScroll, dataIterable),
-                    collectPhase.toCollect().size()
+                        requiresScroll, dataIterable)
                 )),
             consumer
         );

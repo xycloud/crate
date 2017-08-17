@@ -28,6 +28,7 @@ import io.crate.action.job.SharedShardContexts;
 import io.crate.breaker.RamAccountingContext;
 import io.crate.data.BatchConsumer;
 import io.crate.data.ListenableBatchConsumer;
+import io.crate.data.Row;
 import io.crate.jobs.AbstractExecutionSubContext;
 import io.crate.metadata.RowGranularity;
 import io.crate.planner.node.dql.CollectPhase;
@@ -50,7 +51,7 @@ public class JobCollectContext extends AbstractExecutionSubContext {
     private final CollectPhase collectPhase;
     private final MapSideDataCollectOperation collectOperation;
     private final RamAccountingContext queryPhaseRamAccountingContext;
-    private final ListenableBatchConsumer consumer;
+    private final ListenableBatchConsumer<Row> consumer;
     private final SharedShardContexts sharedShardContexts;
 
     private final IntObjectHashMap<Engine.Searcher> searchers = new IntObjectHashMap<>();
@@ -62,14 +63,14 @@ public class JobCollectContext extends AbstractExecutionSubContext {
     public JobCollectContext(final CollectPhase collectPhase,
                              MapSideDataCollectOperation collectOperation,
                              RamAccountingContext queryPhaseRamAccountingContext,
-                             BatchConsumer consumer,
+                             BatchConsumer<Row> consumer,
                              SharedShardContexts sharedShardContexts) {
         super(collectPhase.phaseId(), LOGGER);
         this.collectPhase = collectPhase;
         this.collectOperation = collectOperation;
         this.queryPhaseRamAccountingContext = queryPhaseRamAccountingContext;
         this.sharedShardContexts = sharedShardContexts;
-        this.consumer = new ListenableBatchConsumer(consumer);
+        this.consumer = new ListenableBatchConsumer<>(consumer);
         this.consumer.completionFuture().whenComplete((result, ex) -> close(ex));
         this.threadPoolName = threadPoolName(collectPhase);
     }

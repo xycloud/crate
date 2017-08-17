@@ -25,7 +25,7 @@ import io.crate.analyze.WhereClause;
 import io.crate.data.BatchConsumer;
 import io.crate.data.BatchIterator;
 import io.crate.data.Row1;
-import io.crate.data.RowsBatchIterator;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.operation.count.CountOperation;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
@@ -67,7 +67,7 @@ public class CountContext extends AbstractExecutionSubContext {
             throw new RuntimeException(e);
         }
         countFuture.whenComplete((rowCount, failure) -> {
-            BatchIterator iterator = rowCount == null ? null : RowsBatchIterator.newInstance(new Row1(rowCount));
+            BatchIterator iterator = rowCount == null ? null : InMemoryBatchIterator.newInstance(new Row1(rowCount));
             consumer.accept(iterator, failure);
             close(failure);
         });

@@ -35,8 +35,8 @@ import io.crate.data.BatchConsumer;
 import io.crate.data.BatchIterator;
 import io.crate.data.Buckets;
 import io.crate.data.CompositeBatchIterator;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
-import io.crate.data.RowsBatchIterator;
 import io.crate.exceptions.UnhandledServerException;
 import io.crate.executor.transport.TransportActionProvider;
 import io.crate.lucene.LuceneQueryBuilder;
@@ -298,7 +298,7 @@ public class ShardCollectSource extends AbstractComponent implements CollectSour
 
     @Override
     public CrateCollector getCollector(CollectPhase phase,
-                                       BatchConsumer lastConsumer,
+                                       BatchConsumer<Row> lastConsumer,
                                        JobCollectContext jobCollectContext) {
         RoutedCollectPhase collectPhase = (RoutedCollectPhase) phase;
         RoutedCollectPhase normalizedPhase = collectPhase.normalize(nodeNormalizer, null);
@@ -306,7 +306,7 @@ public class ShardCollectSource extends AbstractComponent implements CollectSour
         String localNodeId = clusterService.localNode().getId();
 
 
-        BatchConsumer firstConsumer = ProjectingBatchConsumer.create(
+        BatchConsumer<Row> firstConsumer = ProjectingBatchConsumer.create(
             lastConsumer,
             Projections.nodeProjections(normalizedPhase.projections()),
             collectPhase.jobId(),
@@ -343,7 +343,7 @@ public class ShardCollectSource extends AbstractComponent implements CollectSour
 
         switch (builders.size()) {
             case 0:
-                return RowsCollector.empty(firstConsumer, phase.toCollect().size());
+                return RowsCollector.empty(firstConsumer);
             case 1:
                 CrateCollector.Builder collectorBuilder = builders.iterator().next();
                 return collectorBuilder.build(collectorBuilder.applyProjections(firstConsumer));
@@ -354,7 +354,7 @@ public class ShardCollectSource extends AbstractComponent implements CollectSour
                     return new CompositeCollector(
                         builders,
                         firstConsumer,
-                        iterators -> new AsyncCompositeBatchIterator(executor, iterators)
+                        iterators -> new AsyncCompositeBatchIterator<>(executor, iterators)
                     );
                 } else {
                     return new CompositeCollector(builders, firstConsumer, CompositeBatchIterator::new);
@@ -404,7 +404,6 @@ public class ShardCollectSource extends AbstractComponent implements CollectSour
         return BatchIteratorCollectorBridge.newInstance(
             OrderedLuceneBatchIteratorFactory.newInstance(
                 orderedDocCollectors,
-                collectPhase.toCollect().size(),
                 OrderingByPosition.rowOrdering(
                     OrderByPositionVisitor.orderByPositions(orderBy.orderBySymbols(), collectPhase.toCollect()),
                     orderBy.reverseFlags(),
@@ -541,8 +540,7 @@ public class ShardCollectSource extends AbstractComponent implements CollectSour
             rows.sort(OrderingByPosition.arrayOrdering(collectPhase).reverse());
         }
         return BatchIteratorCollectorBridge.newInstance(
-            RowsBatchIterator.newInstance(
-                Iterables.transform(rows, Buckets.arrayToRowFunction()), collectPhase.outputTypes().size()),
+            InMemoryBatchIterator.newInstance(Iterables.transform(rows, Buckets.arrayToRowFunction())),
             consumer
         );
     }

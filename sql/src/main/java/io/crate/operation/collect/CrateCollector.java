@@ -22,6 +22,7 @@
 package io.crate.operation.collect;
 
 import io.crate.data.BatchConsumer;
+import io.crate.data.Row;
 
 public interface CrateCollector {
 
@@ -34,9 +35,9 @@ public interface CrateCollector {
          *                      {@link #doCollect()} has been called.
          *                      (May be async)
          */
-        CrateCollector build(BatchConsumer batchConsumer);
+        CrateCollector build(BatchConsumer<Row> batchConsumer);
 
-        default BatchConsumer applyProjections(BatchConsumer consumer) {
+        default BatchConsumer<Row> applyProjections(BatchConsumer<Row> consumer) {
             return consumer;
         }
     }

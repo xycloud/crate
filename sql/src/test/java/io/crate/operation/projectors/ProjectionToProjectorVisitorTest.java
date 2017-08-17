@@ -33,8 +33,9 @@ import io.crate.breaker.RamAccountingContext;
 import io.crate.data.BatchIterator;
 import io.crate.data.Bucket;
 import io.crate.data.CollectionBucket;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Projector;
-import io.crate.data.RowsBatchIterator;
+import io.crate.data.Row;
 import io.crate.executor.transport.TransportActionProvider;
 import io.crate.metadata.FunctionIdent;
 import io.crate.metadata.FunctionInfo;
@@ -183,11 +184,11 @@ public class ProjectionToProjectorVisitorTest extends CrateUnitTest {
         assertThat(projector, instanceOf(AggregationPipe.class));
 
 
-        BatchIterator batchIterator = projector.apply(RowsBatchIterator.newInstance(
+        BatchIterator<Row> batchIterator = projector.apply(InMemoryBatchIterator.newInstance(
             new CollectionBucket(Arrays.asList(
                 $("foo", 10),
                 $("bar", 20)
-            )), 2
+            ))
         ));
         TestingBatchConsumer consumer = new TestingBatchConsumer();
         consumer.accept(batchIterator, null);
@@ -239,8 +240,8 @@ public class ProjectionToProjectorVisitorTest extends CrateUnitTest {
         rows.add($(vogon, 48, male));
         rows.add($(human, 34, male));
 
-        BatchIterator batchIterator = topNProjector.apply(projector.apply(
-            RowsBatchIterator.newInstance(new CollectionBucket(rows), 3)));
+        BatchIterator<Row> batchIterator = topNProjector.apply(projector.apply(
+            InMemoryBatchIterator.newInstance(new CollectionBucket(rows))));
         TestingBatchConsumer consumer = new TestingBatchConsumer();
 
         consumer.accept(batchIterator, null);
@@ -269,7 +270,7 @@ public class ProjectionToProjectorVisitorTest extends CrateUnitTest {
         rows.add($("human", 2));
         rows.add($("vogon", 1));
 
-        BatchIterator filteredBI = projector.apply(RowsBatchIterator.newInstance(new CollectionBucket(rows), 2));
+        BatchIterator<Row> filteredBI = projector.apply(InMemoryBatchIterator.newInstance(new CollectionBucket(rows)));
         TestingBatchConsumer consumer = new TestingBatchConsumer();
         consumer.accept(filteredBI, null);
         Bucket bucket = consumer.getBucket();

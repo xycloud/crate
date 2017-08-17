@@ -32,22 +32,21 @@ import java.util.stream.Collector;
  *
  * This is no proper {@link io.crate.data.BatchConsumer} and it does *NOT* close the BatchIterator.
  */
-public class BatchRowVisitor {
+public class BatchIterators {
 
-    public static <A, R> CompletableFuture<R> visitRows(BatchIterator it, Collector<Row, A, R> collector) {
-        return visitRows(it, collector.supplier().get(), collector, new CompletableFuture<>());
+    public static <T, A, R> CompletableFuture<R> collect(BatchIterator<T> it, Collector<T, A, R> collector) {
+        return collect(it, collector.supplier().get(), collector, new CompletableFuture<>());
     }
 
-    public static <A, R> CompletableFuture<R> visitRows(BatchIterator it,
-                                                        A state,
-                                                        Collector<Row, A, R> collector,
-                                                        CompletableFuture<R> resultFuture) {
-        BiConsumer<A, Row> accumulator = collector.accumulator();
-        Row row = RowBridging.toRow(it.rowData());
+    public static <T, A, R> CompletableFuture<R> collect(BatchIterator<T> it,
+                                                         A state,
+                                                         Collector<T, A, R> collector,
+                                                         CompletableFuture<R> resultFuture) {
+        BiConsumer<A, T> accumulator = collector.accumulator();
         boolean allLoaded;
         try {
             while (it.moveNext()) {
-                accumulator.accept(state, row);
+                accumulator.accept(state, it.currentElement());
             }
             allLoaded = it.allLoaded();
         } catch (Throwable t) {
@@ -60,7 +59,7 @@ public class BatchRowVisitor {
         } else {
             it.loadNextBatch().whenComplete((r, t) -> {
                 if (t == null) {
-                    visitRows(it, state, collector, resultFuture);
+                    collect(it, state, collector, resultFuture);
                 } else {
                     resultFuture.completeExceptionally(t);
                 }

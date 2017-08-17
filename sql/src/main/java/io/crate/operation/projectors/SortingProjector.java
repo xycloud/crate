@@ -22,7 +22,13 @@
 package io.crate.operation.projectors;
 
 import com.google.common.base.Preconditions;
-import io.crate.data.*;
+import io.crate.data.BatchIterator;
+import io.crate.data.Bucket;
+import io.crate.data.CollectingBatchIterator;
+import io.crate.data.CollectionBucket;
+import io.crate.data.Input;
+import io.crate.data.Projector;
+import io.crate.data.Row;
 import io.crate.operation.collect.CollectExpression;
 
 import java.util.Collection;
@@ -68,11 +74,11 @@ class SortingProjector implements Projector {
 
 
     @Override
-    public BatchIterator apply(BatchIterator batchIterator) {
+    public BatchIterator<Row> apply(BatchIterator<Row> batchIterator) {
         Collector<Row, ?, Bucket> collector = Collectors.mapping(
             this::getCells,
             Collectors.collectingAndThen(Collectors.toList(), this::sortAndCreateBucket));
-        return CollectingBatchIterator.newInstance(batchIterator, collector, numOutputs);
+        return CollectingBatchIterator.newInstance(batchIterator, collector);
     }
 
     @Override

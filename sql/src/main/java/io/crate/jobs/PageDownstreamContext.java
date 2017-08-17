@@ -85,8 +85,7 @@ public class PageDownstreamContext extends AbstractExecutionSubContext implement
             pagingIterator,
             this::fetchMore,
             this::allUpstreamsExhausted,
-            () -> releaseListenersAndCloseContext(null),
-            streamers.length
+            () -> releaseListenersAndCloseContext(null)
         );
         this.consumer = batchConsumer;
     }

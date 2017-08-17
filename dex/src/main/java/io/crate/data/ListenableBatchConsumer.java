@@ -25,19 +25,19 @@ package io.crate.data;
 import javax.annotation.Nullable;
 import java.util.concurrent.CompletableFuture;
 
-public class ListenableBatchConsumer implements BatchConsumer {
+public class ListenableBatchConsumer<T> implements BatchConsumer<T> {
 
-    private final BatchConsumer delegate;
+    private final BatchConsumer<T> delegate;
     private final CompletableFuture<Void> completionFuture = new CompletableFuture<>();
 
-    public ListenableBatchConsumer(BatchConsumer delegate) {
+    public ListenableBatchConsumer(BatchConsumer<T> delegate) {
         this.delegate = delegate;
     }
 
     @Override
-    public void accept(BatchIterator iterator, @Nullable Throwable failure) {
+    public void accept(BatchIterator<T> iterator, @Nullable Throwable failure) {
         if (failure == null) {
-            delegate.accept(new ListenableBatchIterator(iterator, completionFuture), null);
+            delegate.accept(new ListenableBatchIterator<>(iterator, completionFuture), null);
         } else {
             delegate.accept(null, failure);
             completionFuture.completeExceptionally(failure);

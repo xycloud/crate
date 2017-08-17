@@ -22,8 +22,8 @@
 package io.crate.executor.task;
 
 import io.crate.data.BatchConsumer;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
-import io.crate.data.RowsBatchIterator;
 import io.crate.executor.Task;
 
 import java.util.Collections;
@@ -38,8 +38,8 @@ public class NoopTask implements Task {
     }
 
     @Override
-    public void execute(BatchConsumer consumer, Row parameters) {
-        consumer.accept(RowsBatchIterator.empty(0), null);
+    public void execute(BatchConsumer<Row> consumer, Row parameters) {
+        consumer.accept(InMemoryBatchIterator.empty(), null);
     }
 
     @Override

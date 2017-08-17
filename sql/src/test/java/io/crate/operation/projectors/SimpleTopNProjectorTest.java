@@ -23,7 +23,12 @@ package io.crate.operation.projectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import io.crate.data.*;
+import io.crate.data.BatchIterator;
+import io.crate.data.Bucket;
+import io.crate.data.InMemoryBatchIterator;
+import io.crate.data.Input;
+import io.crate.data.Projector;
+import io.crate.data.Row;
 import io.crate.metadata.Scalar;
 import io.crate.operation.aggregation.FunctionExpression;
 import io.crate.operation.collect.CollectExpression;
@@ -47,8 +52,8 @@ import static org.hamcrest.Matchers.is;
 public class SimpleTopNProjectorTest extends CrateUnitTest {
 
     private static final InputCollectExpression input = new InputCollectExpression(0);
-    private static final ImmutableList<Input<?>> INPUTS = ImmutableList.<Input<?>>of(input);
-    private static final List<CollectExpression<Row, ?>> COLLECT_EXPRESSIONS = Collections.<CollectExpression<Row, ?>>singletonList(input);
+    private static final ImmutableList<Input<?>> INPUTS = ImmutableList.of(input);
+    private static final List<CollectExpression<Row, ?>> COLLECT_EXPRESSIONS = Collections.singletonList(input);
 
     private TestingBatchConsumer consumer = new TestingBatchConsumer();
 
@@ -60,7 +65,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     public void testProjectLimitOnly() throws Throwable {
         Projector projector = prepareProjector(10, TopN.NO_OFFSET);
 
-        BatchIterator batchIterator = projector.apply(TestingBatchIterators.range(0, 12));
+        BatchIterator<Row> batchIterator = projector.apply(TestingBatchIterators.range(0, 12));
         consumer.accept(batchIterator, null);
 
         Bucket projected = consumer.getBucket();
@@ -73,7 +78,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectLimitOnlyLessThanLimit() throws Throwable {
         Projector projector = prepareProjector(10, TopN.NO_OFFSET);
-        BatchIterator batchIterator = projector.apply(TestingBatchIterators.range(0, 5));
+        BatchIterator<Row> batchIterator = projector.apply(TestingBatchIterators.range(0, 5));
         consumer.accept(batchIterator, null);
 
         Bucket projected = consumer.getBucket();
@@ -86,7 +91,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectLimitOnlyExactlyLimit() throws Throwable {
         Projector projector = prepareProjector(10, TopN.NO_OFFSET);
-        BatchIterator batchIterator = projector.apply(TestingBatchIterators.range(0, 10));
+        BatchIterator<Row> batchIterator = projector.apply(TestingBatchIterators.range(0, 10));
         consumer.accept(batchIterator, null);
         Bucket projected = consumer.getBucket();
         assertThat(projected.size(), is(10));
@@ -99,7 +104,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectLimitOnly0() throws Throwable {
         Projector projector = prepareProjector(10, TopN.NO_OFFSET);
-        consumer.accept(projector.apply(RowsBatchIterator.empty(1)), null);
+        consumer.accept(projector.apply(InMemoryBatchIterator.empty()), null);
 
         Bucket projected = consumer.getBucket();
         assertThat(projected, emptyIterable());
@@ -111,7 +116,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectLimitOnly1() throws Throwable {
         Projector projector = prepareProjector(1, TopN.NO_OFFSET);
-        BatchIterator batchIterator = projector.apply(TestingBatchIterators.range(0, 10));
+        BatchIterator<Row> batchIterator = projector.apply(TestingBatchIterators.range(0, 10));
         consumer.accept(batchIterator, null);
 
         Bucket projected = consumer.getBucket();
@@ -124,7 +129,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectOffsetBigger0() throws Throwable {
         Projector projector = prepareProjector(100, 10);
-        BatchIterator batchIterator = projector.apply(TestingBatchIterators.range(0, 100));
+        BatchIterator<Row> batchIterator = projector.apply(TestingBatchIterators.range(0, 100));
         consumer.accept(batchIterator, null);
 
         Bucket projected = consumer.getBucket();
@@ -158,7 +163,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
         Iterable<Row> rows = RowGenerator.fromSingleColValues(
             () -> IntStream.range(0, 12).mapToDouble(i -> 42.3d).iterator());
 
-        BatchIterator batchIterator = projector.apply(RowsBatchIterator.newInstance(rows, 1));
+        BatchIterator<Row> batchIterator = projector.apply(InMemoryBatchIterator.newInstance(rows));
         consumer.accept(batchIterator, null);
         Bucket result = consumer.getBucket();
         assertThat(result.size(), is(10));
@@ -168,7 +173,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectLimitOnlyUpStream() throws Throwable {
         Projector projector = prepareProjector(10, TopN.NO_OFFSET);
-        BatchIterator batchIterator = projector.apply(TestingBatchIterators.range(0, 12));
+        BatchIterator<Row> batchIterator = projector.apply(TestingBatchIterators.range(0, 12));
         consumer.accept(batchIterator, null);
         Bucket projected = consumer.getBucket();
         assertThat(projected.size(), is(10));
@@ -193,7 +198,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectLimitOnly0UpStream() throws Throwable {
         Projector projector = prepareProjector(10, TopN.NO_OFFSET);
-        consumer.accept(projector.apply(RowsBatchIterator.empty(1)), null);
+        consumer.accept(projector.apply(InMemoryBatchIterator.empty()), null);
         Bucket projected = consumer.getBucket();
         assertThat(projected, emptyIterable());
     }
@@ -201,7 +206,7 @@ public class SimpleTopNProjectorTest extends CrateUnitTest {
     @Test
     public void testProjectOffsetBigger0UpStream() throws Throwable {
         Projector projector = prepareProjector(100, 10);
-        BatchIterator batchIterator = projector.apply(TestingBatchIterators.range(0, 100));
+        BatchIterator<Row> batchIterator = projector.apply(TestingBatchIterators.range(0, 100));
         consumer.accept(batchIterator, null);
         Bucket projected = consumer.getBucket();
         assertThat(projected.size(), is(90));

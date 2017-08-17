@@ -25,7 +25,7 @@ import io.crate.analyze.MetaDataToASTNodeResolver;
 import io.crate.data.BatchConsumer;
 import io.crate.data.Row;
 import io.crate.data.Row1;
-import io.crate.data.RowsBatchIterator;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.executor.Task;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.sql.SqlFormatter;
@@ -53,7 +53,7 @@ public class ShowCreateTableTask implements Task {
             consumer.accept(null, t);
             return;
         }
-        consumer.accept(RowsBatchIterator.newInstance(row), null);
+        consumer.accept(InMemoryBatchIterator.newInstance(row), null);
     }
 
     @Override

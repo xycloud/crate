@@ -31,7 +31,8 @@ import io.crate.analyze.symbol.Literal;
 import io.crate.breaker.RamAccountingContext;
 import io.crate.data.BatchConsumer;
 import io.crate.data.BatchIterator;
-import io.crate.data.RowsBatchIterator;
+import io.crate.data.InMemoryBatchIterator;
+import io.crate.data.Row;
 import io.crate.exceptions.UnhandledServerException;
 import io.crate.executor.transport.TransportActionProvider;
 import io.crate.metadata.Functions;
@@ -108,7 +109,7 @@ public class ProjectingBatchConsumerTest extends CrateUnitTest {
         threadPool.awaitTermination(1, TimeUnit.SECONDS);
     }
 
-    private static class DummyBatchConsumer implements BatchConsumer {
+    private static class DummyBatchConsumer implements BatchConsumer<Row> {
 
         private final boolean requiresScroll;
 
@@ -117,7 +118,7 @@ public class ProjectingBatchConsumerTest extends CrateUnitTest {
         }
 
         @Override
-        public void accept(BatchIterator iterator, @Nullable Throwable failure) {
+        public void accept(BatchIterator<Row> iterator, @Nullable Throwable failure) {
         }
 
         @Override
@@ -187,7 +188,7 @@ public class ProjectingBatchConsumerTest extends CrateUnitTest {
             projectorFactory
         );
 
-        batchConsumer.accept(RowsBatchIterator.empty(1), null);
+        batchConsumer.accept(InMemoryBatchIterator.empty(), null);
 
         expectedException.expect(UnhandledServerException.class);
         expectedException.expectMessage("Failed to open output");

@@ -29,8 +29,8 @@ import io.crate.analyze.symbol.Symbol;
 import io.crate.analyze.where.DocKeys;
 import io.crate.collections.Lists2;
 import io.crate.data.BatchConsumer;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
-import io.crate.data.RowsBatchIterator;
 import io.crate.executor.JobTask;
 import io.crate.executor.transport.TransportActionProvider;
 import io.crate.jobs.AbstractExecutionSubContext;
@@ -57,14 +57,25 @@ import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.get.*;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.get.MultiGetRequest;
+import org.elasticsearch.action.get.MultiGetResponse;
+import org.elasticsearch.action.get.TransportGetAction;
+import org.elasticsearch.action.get.TransportMultiGetAction;
 import org.elasticsearch.action.support.TransportAction;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.StreamSupport;
 
 public class ESGetTask extends JobTask {
@@ -90,9 +101,9 @@ public class ESGetTask extends JobTask {
         private final Action transportAction;
         protected final ESGetTask task;
 
-        BatchConsumer consumer;
+        BatchConsumer<Row> consumer;
 
-        JobContext(ESGetTask task, Action transportAction, BatchConsumer consumer) {
+        JobContext(ESGetTask task, Action transportAction, BatchConsumer<Row> consumer) {
             super(task.esGet.executionPhaseId(), LOGGER);
             this.task = task;
             this.transportAction = transportAction;
@@ -107,7 +118,7 @@ public class ESGetTask extends JobTask {
         protected void innerStart() {
             if (request == null) {
                 // request can be null if id is null -> since primary keys cannot be null this is a no-match
-                consumer.accept(RowsBatchIterator.empty(task.inputRow.numColumns()), null);
+                consumer.accept(InMemoryBatchIterator.empty(), null);
                 close();
             } else {
                 transportAction.execute(request, this);
@@ -119,7 +130,7 @@ public class ESGetTask extends JobTask {
 
         MultiGetJobContext(ESGetTask task,
                            TransportMultiGetAction transportAction,
-                           BatchConsumer consumer) {
+                           BatchConsumer<Row> consumer) {
             super(task, transportAction, consumer);
             assert task.esGet.docKeys().size() > 1 : "number of docKeys must be > 1";
             assert task.projectorFactory != null : "task.projectorFactory must not be null";
@@ -176,7 +187,7 @@ public class ESGetTask extends JobTask {
         public void onResponse(MultiGetResponse responses) {
             try {
                 Iterable<Row> rows = responseToRows(responses);
-                consumer.accept(RowsBatchIterator.newInstance(rows, task.inputRow.numColumns()), null);
+                consumer.accept(InMemoryBatchIterator.newInstance(rows), null);
                 close();
             } catch (Exception e) {
                 consumer.accept(null, e);
@@ -256,9 +267,9 @@ public class ESGetTask extends JobTask {
                 for (CollectExpression<GetResponse, ?> expression : task.expressions) {
                     expression.setNextRow(response);
                 }
-                consumer.accept(RowsBatchIterator.newInstance(task.inputRow), null);
+                consumer.accept(InMemoryBatchIterator.newInstance(task.inputRow), null);
             } else {
-                consumer.accept(RowsBatchIterator.empty(task.inputRow.numColumns()), null);
+                consumer.accept(InMemoryBatchIterator.empty(), null);
             }
             close();
         }
@@ -267,7 +278,7 @@ public class ESGetTask extends JobTask {
         public void onFailure(Exception e) {
             if (task.esGet.tableInfo().isPartitioned() && e instanceof IndexNotFoundException) {
                 // this means we have no matching document
-                consumer.accept(RowsBatchIterator.empty(task.inputRow.numColumns()), null);
+                consumer.accept(InMemoryBatchIterator.empty(), null);
                 close();
             } else {
                 consumer.accept(null, e);

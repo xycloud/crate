@@ -22,9 +22,9 @@
 package io.crate.executor.transport.task;
 
 import io.crate.data.BatchConsumer;
+import io.crate.data.InMemoryBatchIterator;
 import io.crate.data.Row;
 import io.crate.data.Row1;
-import io.crate.data.RowsBatchIterator;
 import io.crate.executor.JobTask;
 import io.crate.executor.transport.ddl.DropTableRequest;
 import io.crate.executor.transport.ddl.DropTableResponse;
@@ -68,7 +68,7 @@ public class DropTableTask extends JobTask {
                 if (!response.isAcknowledged()) {
                     warnNotAcknowledged();
                 }
-                consumer.accept(RowsBatchIterator.newInstance(ROW_ONE), null);
+                consumer.accept(InMemoryBatchIterator.newInstance(ROW_ONE), null);
             }
 
             @Override
@@ -81,7 +81,7 @@ public class DropTableTask extends JobTask {
                         e);
                 }
                 if (ifExists && e instanceof IndexNotFoundException) {
-                    consumer.accept(RowsBatchIterator.newInstance(ROW_ZERO), null);
+                    consumer.accept(InMemoryBatchIterator.newInstance(ROW_ZERO), null);
                 } else {
                     consumer.accept(null, e);
                 }

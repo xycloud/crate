@@ -23,7 +23,11 @@ package io.crate.operation.projectors;
 
 import io.crate.analyze.symbol.AggregateMode;
 import io.crate.breaker.RamAccountingContext;
-import io.crate.data.*;
+import io.crate.data.BatchIterator;
+import io.crate.data.CollectingBatchIterator;
+import io.crate.data.Input;
+import io.crate.data.Projector;
+import io.crate.data.Row;
 import io.crate.operation.AggregationContext;
 import io.crate.operation.aggregation.AggregationFunction;
 import io.crate.operation.collect.CollectExpression;
@@ -35,7 +39,6 @@ import java.util.List;
 public class GroupingProjector implements Projector {
 
     private final GroupingCollector<Object> collector;
-    private final int numCols;
 
 
     public GroupingProjector(List<? extends DataType> keyTypes,
@@ -77,7 +80,6 @@ public class GroupingProjector implements Projector {
                 keyTypes
             );
         }
-        numCols = keyInputs.size() + functions.length;
     }
 
     private static boolean allTypesKnown(List<? extends DataType> keyTypes) {
@@ -85,8 +87,8 @@ public class GroupingProjector implements Projector {
     }
 
     @Override
-    public BatchIterator apply(BatchIterator batchIterator) {
-        return CollectingBatchIterator.newInstance(batchIterator, collector, numCols);
+    public BatchIterator<Row> apply(BatchIterator<Row> batchIterator) {
+        return CollectingBatchIterator.newInstance(batchIterator, collector);
     }
 
     @Override

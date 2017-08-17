@@ -20,23 +20,17 @@
  * agreement.
  */
 
-package io.crate.data;
+package io.crate.data.join;
 
-import io.crate.testing.FailingBatchIterator;
-import org.junit.Test;
+public interface ElementCombiner<L, R, C> {
 
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+    C currentElement();
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+    void nullLeft();
 
-public class BatchRowVisitorTest {
+    void nullRight();
 
-    @Test
-    public void testExceptionOnAllLoadedIsSetOntoFuture() throws Exception {
-        CompletableFuture<Long> future = BatchRowVisitor.visitRows(
-            FailingBatchIterator.failOnAllLoaded(), Collectors.counting());
-        assertThat(future.isCompletedExceptionally(), is(true));
-    }
+    void setRight(R o);
+
+    void setLeft(L o);
 }

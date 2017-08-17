@@ -25,6 +25,7 @@ package io.crate.operation.projectors;
 import io.crate.data.BatchIterator;
 import io.crate.data.CollectingBatchIterator;
 import io.crate.data.Projector;
+import io.crate.data.Row;
 import io.crate.data.Row1;
 
 import java.util.Collections;
@@ -40,17 +41,19 @@ class SysUpdateProjector implements Projector {
     }
 
     @Override
-    public BatchIterator apply(BatchIterator batchIterator) {
-        return CollectingBatchIterator.newInstance(batchIterator,
-            Collector.of(
-                () -> new State(rowWriter),
-                (state, row) -> {
-                    state.rowWriter.accept(row.get(0));
-                    state.rowCount++;
-                },
-                (state1, state2) -> { throw new UnsupportedOperationException("Combine not supported"); },
-                state -> Collections.singletonList(new Row1(state.rowCount))
-            ), 1);
+    public BatchIterator<Row> apply(BatchIterator<Row> batchIterator) {
+        Collector<Row, State, Iterable<Row>> combine_not_supported = Collector.of(
+            () -> new State(rowWriter),
+            (state, row) -> {
+                state.rowWriter.accept(row.get(0));
+                state.rowCount++;
+            },
+            (state1, state2) -> {
+                throw new UnsupportedOperationException("Combine not supported");
+            },
+            state -> Collections.singletonList(new Row1(state.rowCount))
+        );
+        return CollectingBatchIterator.newInstance(batchIterator, combine_not_supported);
     }
 
     @Override
