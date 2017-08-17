@@ -24,7 +24,6 @@ package io.crate.data.join;
 import io.crate.data.BatchIterator;
 import io.crate.data.Columns;
 
-import java.util.concurrent.CompletionStage;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
@@ -33,41 +32,18 @@ import java.util.function.Function;
  *     for (leftRow in left) {
  *         for (rightRow in right) {
  *             match?
- *                  onRow;
  *                  break;
  *         }
+ *         onRow;
  *     }
  * </pre>
  */
-class SemiJoinBatchIterator extends NestedLoopBatchIterator {
+class AntiJoinBatchIterator extends SemiJoinBatchIterator {
 
-    protected final BooleanSupplier joinCondition;
-
-    SemiJoinBatchIterator(BatchIterator left,
+    AntiJoinBatchIterator(BatchIterator left,
                           BatchIterator right,
                           Function<Columns, BooleanSupplier> joinCondition) {
-        super(left, right);
-        this.joinCondition = joinCondition.apply(rowData);
-    }
-
-    @Override
-    public boolean moveNext() {
-        while (true) {
-            if (activeIt == left) {
-                return moveLeftSide();
-            }
-
-            Boolean x = tryAdvanceRight();
-            if (x != null) {
-                return x;
-            }
-            activeIt = left;
-        }
-    }
-
-    @Override
-    public CompletionStage<?> loadNextBatch() {
-        return super.loadNextBatch();
+        super(left, right, joinCondition);
     }
 
     // We only need the data from the left iterator
@@ -76,31 +52,19 @@ class SemiJoinBatchIterator extends NestedLoopBatchIterator {
         return left.rowData();
     }
 
-    private boolean moveLeftSide() {
-        activeIt = right;
-        while (left.moveNext()) {
-            Boolean x = tryAdvanceRight();
-            if (x != null) {
-                return x;
-            }
-        }
-        activeIt = left;
-        return false;
-    }
-
     /**
      * try to move the right side
      *
-     * @return true  -> matched -> move right to start, move left to next
+     * @return true  -> not matched -> move right to start, move left emits and moves to next
      * false -> need to load more data
-     * null  -> reached it's end and moved back to start -> left side needs to continue
+     * null  -> matched -> move right to start and left side needs to continue without emitting
      */
     protected Boolean tryAdvanceRight() {
         while (right.moveNext()) {
             if (joinCondition.getAsBoolean()) {
                 right.moveToStart();
                 activeIt = left;
-                return true;
+                return null;
             }
         }
         if (right.allLoaded() == false) {
@@ -108,6 +72,6 @@ class SemiJoinBatchIterator extends NestedLoopBatchIterator {
         }
         right.moveToStart();
         activeIt = left;
-        return null;
+        return true;
     }
 }
