@@ -39,6 +39,7 @@ import io.crate.metadata.table.Operation;
 import io.crate.sql.tree.QualifiedName;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -108,6 +109,7 @@ public class MultiSourceSelect implements QueriedRelation {
         Set<Symbol> requiredForMerge = Sets2.transformedCopy(splitter.requiredForMerge(), convertFieldInSymbolsToNewRelations);
         Set<Field> canBeFetched = Sets2.transformedCopy(splitter.canBeFetched(), convertFieldToPointToNewRelations);
         return new MultiSourceSelect(
+            mss.qualifiedName,
             mss.sources(),
             mss.fields(),
             querySpec,
@@ -133,6 +135,7 @@ public class MultiSourceSelect implements QueriedRelation {
                              QuerySpec querySpec,
                              List<JoinPair> joinPairs) {
         assert sources.size() > 1 : "MultiSourceSelect requires at least 2 relations";
+        this.qualifiedName = generateName(sources.keySet());
         this.sources = sources;
         for (Map.Entry<QualifiedName, AnalyzedRelation> entry : sources.entrySet()) {
             entry.getValue().setQualifiedName(entry.getKey());
@@ -150,13 +153,24 @@ public class MultiSourceSelect implements QueriedRelation {
         this.remainingOrderBy = Optional.empty();
     }
 
-    private MultiSourceSelect(Map<QualifiedName, AnalyzedRelation> sources,
+    private static QualifiedName generateName(Set<QualifiedName> sourceNames) {
+        ArrayList<String> nameParts = new ArrayList<>(sourceNames.size() + 1);
+        nameParts.add("J");
+        for (QualifiedName sourceName : sourceNames) {
+            nameParts.add(sourceName.toString());
+        }
+        return new QualifiedName(nameParts);
+    }
+
+    private MultiSourceSelect(QualifiedName relName,
+                              Map<QualifiedName, AnalyzedRelation> sources,
                               Collection<Field> fields,
                               QuerySpec querySpec,
                               List<JoinPair> joinPairs,
                               Set<Symbol> requiredForMerge,
                               Set<Field> canBeFetched,
                               Optional<RemainingOrderBy> remainingOrderBy) {
+        this.qualifiedName = relName;
         this.sources = sources;
         this.joinPairs = joinPairs;
         this.querySpec = querySpec;

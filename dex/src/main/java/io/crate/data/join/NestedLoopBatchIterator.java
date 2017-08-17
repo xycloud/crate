@@ -110,6 +110,7 @@ public class NestedLoopBatchIterator implements BatchIterator {
     public void moveToStart() {
         left.moveToStart();
         right.moveToStart();
+        activeIt = left;
     }
 
     @Override
