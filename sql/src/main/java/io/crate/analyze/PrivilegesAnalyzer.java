@@ -192,6 +192,6 @@ class PrivilegesAnalyzer {
         if (clazz.equals(Privilege.Clazz.SCHEMA)) {
             return Lists2.copyAndReplace(tableOrSchemaNames, QualifiedName::toString);
         }
-        return Lists2.copyAndReplace(tableOrSchemaNames, q -> TableIdent.of(q, Schemas.DEFAULT_SCHEMA_NAME).fqn());
+        return Lists2.copyAndReplace(tableOrSchemaNames, q -> TableIdent.of(q, Schemas.DOC_SCHEMA_NAME).fqn());
     }
 }
