@@ -647,4 +647,17 @@ public class SubSelectIntegrationTest extends SQLTransportIntegrationTest {
         assertThat(printedTable(response.rows()),
             is( "catbert| 9.9999999999E8\n"));
     }
+
+    @Test
+    public void testSelectWithTwoInOnSubQueryThatCanBeRewrittenToSemiJoins() throws Exception {
+        execute("select * from unnest([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) t1 " +
+                "where " +
+                "   col1 in (select col1 from unnest([1, 2, 4, 5, 6])) " +
+                "   and col1 in (select col1 from unnest([4, 5, 6])) " +
+                "order by col1 ");
+        assertThat(printedTable(response.rows()),
+            is("4\n" +
+               "5\n" +
+               "6\n"));
+    }
 }

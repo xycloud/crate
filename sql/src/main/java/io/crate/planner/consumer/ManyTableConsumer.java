@@ -420,7 +420,7 @@ public class ManyTableConsumer implements Consumer {
                         // path is prefixed with relationName so that they are still unique
                         ColumnIdent path = new ColumnIdent(f.relation().getQualifiedName().toString(), f.path().outputName());
                         Field field = join.getField(path, Operation.READ);
-                        assert field != null : "must be able to resolve the field from the twoTableJoin";
+                        assert field != null : "must be able to resolve field \"" + path + "\" from " + join.getQualifiedName();
                         return field;
                     }
                     return f;
@@ -484,14 +484,20 @@ public class ManyTableConsumer implements Consumer {
         for (Map.Entry<Set<QualifiedName>, Symbol> entry : splitQuery.entrySet()) {
             Set<QualifiedName> relations = entry.getKey();
             Symbol joinCondition = entry.getValue();
+            // If *both* relations occur in the current query it can immediately applied.
+            // So there is no need to propagate the values to parent join-nodes
+            if (relations.contains(leftName) && relations.contains(rightName)) {
+                continue;
+            }
             if (relations.contains(leftName) || relations.contains(rightName)) {
-                FieldsVisitor.visitFields(joinCondition,
-                                          f -> {
-                                            if (f.relation().getQualifiedName().equals(leftName) ||
-                                                    f.relation().getQualifiedName().equals(rightName)) {
-                                                fields.add(f);
-                                            }
-                                          });
+                FieldsVisitor.visitFields(
+                    joinCondition,
+                    f -> {
+                        QualifiedName relName = f.relation().getQualifiedName();
+                        if (relName.equals(leftName) || relName.equals(rightName)) {
+                            fields.add(f);
+                        }
+                    });
             }
         }
         newQuerySpec.outputs(new ArrayList<>(fields));
