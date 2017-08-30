@@ -360,12 +360,18 @@ public class ManyTableConsumer implements Consumer {
             if (it.hasNext()) {
                 extendQSOutputs(splittedWhereQuery, leftName, rightName, newQuerySpec);
                 extendQSOutputs(splittedJoinConditions, leftName, rightName, newQuerySpec);
+
             }
 
-            Optional<OrderBy> remainingOrderByToApply = Optional.empty();
-            if (remainingOrderBy.isPresent() && remainingOrderBy.get().validForRelations(names)) {
-                remainingOrderByToApply = Optional.of(remainingOrderBy.get().orderBy());
-                remainingOrderBy = Optional.empty();
+            Optional<OrderBy> applicableOrderBy = Optional.empty();
+            if (remainingOrderBy.isPresent()) {
+                RemainingOrderBy remainingOrder = remainingOrderBy.get();
+                if (remainingOrder.validForRelations(names)) {
+                    applicableOrderBy = Optional.of(remainingOrderBy.get().orderBy());
+                    remainingOrderBy = Optional.empty();
+                } else if (it.hasNext()) {
+                    extendQSOutputsFromOrderBy(newQuerySpec, remainingOrder.orderBy().orderBySymbols());
+                }
             }
 
             // get explicit join definition
@@ -392,7 +398,7 @@ public class ManyTableConsumer implements Consumer {
                 newQuerySpec,
                 leftRelation,
                 rightRelation,
-                remainingOrderByToApply,
+                applicableOrderBy,
                 joinPair
             );
 
@@ -457,6 +463,14 @@ public class ManyTableConsumer implements Consumer {
         }
 
         return join;
+    }
+
+    private static void extendQSOutputsFromOrderBy(QuerySpec newQuerySpec, List<Symbol> orderExpressions) {
+        LinkedHashSet<Symbol> outputs = new LinkedHashSet<>(newQuerySpec.outputs());
+        for (Symbol orderExpression : orderExpressions) {
+            FieldsVisitor.visitFields(orderExpression, outputs::add);
+        }
+        newQuerySpec.outputs(new ArrayList<>(outputs));
     }
 
 

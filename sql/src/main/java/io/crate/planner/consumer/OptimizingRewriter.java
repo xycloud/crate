@@ -71,9 +71,11 @@ final class OptimizingRewriter {
         }
 
         private QueriedRelation maybeApplySemiJoinRewrite(QueriedRelation queriedRelation) {
+            /*
             if (!transactionContext.sessionContext().getSemiJoinsRewriteEnabled()) {
                 return queriedRelation;
             }
+            */
             QueriedRelation rewrite = semiJoins.tryRewrite(queriedRelation, transactionContext);
             if (rewrite == null) {
                 return queriedRelation;
