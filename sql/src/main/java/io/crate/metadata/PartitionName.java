@@ -42,7 +42,6 @@ public class PartitionName {
 
     private static final Base32 BASE32 = new Base32(true);
     private static final Joiner DOT_JOINER = Joiner.on(".");
-    private static final Splitter SPLITTER = Splitter.on(".").limit(5);
 
     private final TableIdent tableIdent;
 
@@ -65,15 +64,9 @@ public class PartitionName {
         this(new TableIdent(schemaName, tableName), values);
     }
 
-    public static String indexName(TableIdent tableIdent, String ident) {
-        // For the index name belonging to the 'doc' schema, we skip the schema name.
-        // This may safe us some bytes but it also requires checks in different places.
-        // Would have been better to just prefix the 'doc' schema but now that would
-        // mean having to migrate all existing indices.
-        if (tableIdent.schema().equalsIgnoreCase(Schemas.DOC_SCHEMA_NAME)) {
-            return DOT_JOINER.join(PARTITIONED_TABLE_PREFIX, tableIdent.name(), ident);
-        }
-        return DOT_JOINER.join(tableIdent.schema(), PARTITIONED_TABLE_PREFIX, tableIdent.name(), ident);
+    public PartitionName(String schema, String table, String partitionIdent) {
+        this(schema, table, (List<BytesRef>) null);
+        this.ident = partitionIdent;
     }
 
     public static String templateName(String indexName) {
@@ -142,7 +135,7 @@ public class PartitionName {
 
     public String asIndexName() {
         if (indexName == null) {
-            indexName = indexName(tableIdent, ident());
+            indexName = IndexParts.toIndexName(this);
         }
         return indexName;
     }
@@ -202,54 +195,18 @@ public class PartitionName {
     public static PartitionName fromIndexOrTemplate(String indexOrTemplate) {
         assert indexOrTemplate != null : "indexOrTemplate must not be null";
 
-        List<String> parts = SPLITTER.splitToList(indexOrTemplate);
-
-        final String schema;
-        final String partitioned;
-        final String table;
-        final String ident;
-        switch (parts.size()) {
-            case 4:
-                // ""."partitioned"."table_name". ["ident"]
-                schema = Schemas.DOC_SCHEMA_NAME;
-                partitioned = parts.get(1);
-                table = parts.get(2);
-                ident = parts.get(3);
-                break;
-            case 5:
-                // "schema".""."partitioned"."table_name". ["ident"]
-                schema = parts.get(0);
-                partitioned = parts.get(2);
-                table = parts.get(3);
-                ident = parts.get(4);
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid partition name: " + indexOrTemplate);
+        IndexParts indexParts = new IndexParts(indexOrTemplate);
+        if (!indexParts.isPartitioned()) {
+            throw new IllegalArgumentException("Invalid index name: " + indexOrTemplate);
         }
-        if (!partitioned.equals("partitioned")) {
-            throw new IllegalArgumentException("Invalid partition name: " + indexOrTemplate);
-        }
-
-        PartitionName partitionName = new PartitionName(schema, table, null);
-        partitionName.ident = ident;
-        return partitionName;
-    }
-
-    public static boolean isPartition(String index) {
-        return index.length() > PARTITIONED_TABLE_PREFIX.length() + 1 &&
-               (index.startsWith(PARTITIONED_TABLE_PREFIX + ".") ||
-                index.contains("." + PARTITIONED_TABLE_PREFIX + "."));
+        return indexParts.toPartitionName();
     }
 
     /**
      * compute the template name (used with partitioned tables) from a given schema and table name
      */
     public static String templateName(String schemaName, String tableName) {
-        if (schemaName == null || schemaName.equals(Schemas.DOC_SCHEMA_NAME)) {
-            return DOT_JOINER.join(PARTITIONED_TABLE_PREFIX, tableName, "");
-        } else {
-            return DOT_JOINER.join(schemaName, PARTITIONED_TABLE_PREFIX, tableName, "");
-        }
+        return IndexParts.toIndexName(schemaName, tableName, "");
     }
 
     /**
