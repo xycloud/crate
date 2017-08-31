@@ -39,7 +39,6 @@ import io.crate.analyze.relations.JoinPair;
 import io.crate.analyze.relations.JoinPairs;
 import io.crate.analyze.relations.QueriedRelation;
 import io.crate.analyze.relations.QuerySplitter;
-import io.crate.analyze.relations.RemainingOrderBy;
 import io.crate.analyze.symbol.DefaultTraversalSymbolVisitor;
 import io.crate.analyze.symbol.Field;
 import io.crate.analyze.symbol.FieldReplacer;
@@ -64,6 +63,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -337,7 +337,6 @@ public class ManyTableConsumer implements Consumer {
         QuerySpec rootQuerySpec = mss.querySpec();
         QueriedRelation leftRelation = (QueriedRelation) mss.sources().get(leftName);
         QuerySpec leftQuerySpec = leftRelation.querySpec();
-        Optional<RemainingOrderBy> remainingOrderBy = mss.remainingOrderBy();
         List<TwoTableJoin> twoTableJoinList = new ArrayList<>(orderedRelationNames.size());
         Set<QualifiedName> currentTreeRelationNames = new HashSet<>(orderedRelationNames.size());
         currentTreeRelationNames.add(leftName);
@@ -360,12 +359,8 @@ public class ManyTableConsumer implements Consumer {
             if (it.hasNext()) {
                 extendQSOutputs(splittedWhereQuery, leftName, rightName, newQuerySpec);
                 extendQSOutputs(splittedJoinConditions, leftName, rightName, newQuerySpec);
-            }
 
-            Optional<OrderBy> remainingOrderByToApply = Optional.empty();
-            if (remainingOrderBy.isPresent() && remainingOrderBy.get().validForRelations(names)) {
-                remainingOrderByToApply = Optional.of(remainingOrderBy.get().orderBy());
-                remainingOrderBy = Optional.empty();
+                newQuerySpec.outputs().addAll(getOutputsRequiredForMerge(mss.requiredForMerge(), leftName, rightName));
             }
 
             // get explicit join definition
@@ -390,7 +385,6 @@ public class ManyTableConsumer implements Consumer {
                 newQuerySpec,
                 leftRelation,
                 rightRelation,
-                remainingOrderByToApply,
                 joinPair
             );
 
@@ -427,7 +421,6 @@ public class ManyTableConsumer implements Consumer {
                 splittedWhereQuery =
                     rewriteSplitQueryNames(splittedWhereQuery, leftName, rightName, join.getQualifiedName(), replaceFunction);
                 JoinPairs.rewriteNames(leftName, rightName, join.getQualifiedName(), replaceFunction, joinPairs);
-                rewriteOrderByNames(remainingOrderBy, leftName, rightName, join.getQualifiedName(), replaceFunction);
                 rootQuerySpec = rootQuerySpec.copyAndReplace(replaceFunction);
                 rewriteJoinConditionNames(splittedJoinConditions, replaceFunction);
             }
@@ -457,6 +450,26 @@ public class ManyTableConsumer implements Consumer {
         return join;
     }
 
+    private static Collection<? extends Symbol> getOutputsRequiredForMerge(Set<Symbol> requiredForMerge,
+                                                                           QualifiedName leftName,
+                                                                           QualifiedName rightName) {
+        /*
+        ArrayList<Symbol> additionalOutputs = new ArrayList<>();
+        for (Symbol symbol : requiredForMerge) {
+            FieldsVisitor.visitFields(symbol, f -> {
+                QualifiedName relName = f.relation().getQualifiedName();
+                if (relName.equals(leftName) && relName.equals(rightName)) {
+                    return;
+                }
+                if (relName.equals(leftName) || relName.equals(rightName)) {
+                    additionalOutputs.add(f);
+                }
+            });
+        }
+        return additionalOutputs;
+        */
+        return Collections.emptyList();
+    }
 
     /**
      * Extends the outputs of a querySpec to include symbols which are required by the next/upper
@@ -519,19 +532,6 @@ public class ManyTableConsumer implements Consumer {
         joinConditionsMap.replaceAll((qualifiedNames, symbol) -> replaceFunction.apply(symbol));
     }
 
-    private static void rewriteOrderByNames(Optional<RemainingOrderBy> remainingOrderBy,
-                                            QualifiedName leftName,
-                                            QualifiedName rightName,
-                                            QualifiedName newName,
-                                            Function<? super Symbol, ? extends Symbol> replaceFunction) {
-        if (remainingOrderBy.isPresent()) {
-            Set<QualifiedName> relations = remainingOrderBy.get().relations();
-            replace(leftName, newName, relations);
-            replace(rightName, newName, relations);
-            remainingOrderBy.get().orderBy().replace(replaceFunction);
-        }
-    }
-
     private static void replace(QualifiedName oldName, QualifiedName newName, Set<QualifiedName> s) {
         if (s.contains(oldName)) {
             s.remove(oldName);
@@ -552,7 +552,6 @@ public class ManyTableConsumer implements Consumer {
             mss.querySpec(),
             leftRelation,
             rightRelation,
-            mss.remainingOrderBy().map(RemainingOrderBy::orderBy),
             joinPair
         );
     }
